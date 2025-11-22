@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Annpurna Canteen CRISP - POS</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        .no-select {
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+
+        .menu-card:active {
+            transform: scale(0.96);
+        }
+
+        .bill-section {
+            background-color: #ffffff;
+            background-image: radial-gradient(#e5e7eb 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        
+        /* Print Styles */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #receipt-area, #receipt-area * {
+                visibility: visible;
+            }
+            #receipt-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                margin: 0;
+                padding: 0;
+                background: white;
+                border: none;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .text-slate-700, .text-slate-500, .text-slate-800 {
+                color: black !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 h-[100dvh] flex flex-col font-sans overflow-hidden text-slate-800 no-select">
+
+    <!-- Header -->
+    <header class="bg-orange-600 text-white px-4 md:px-6 py-3 shadow-lg flex justify-between items-center z-10 shrink-0 no-print">
+        <div class="flex items-center gap-3">
+            <div class="bg-white text-orange-600 p-1.5 md:p-2 rounded-full w-8 h-8 md:w-10 md:h-10 flex items-center justify-center font-bold text-lg md:text-xl shadow-sm">
+                <i class="fas fa-utensils"></i>
+            </div>
+            <div>
+                <h1 class="text-lg md:text-xl font-bold tracking-wide leading-tight">Annpurna <span class="hidden xs:inline">Canteen</span> <span class="opacity-80 font-normal text-xs md:text-sm block md:inline">CRISP</span></h1>
+            </div>
+        </div>
+        <div class="flex items-center gap-2 md:gap-3">
+            <!-- Desktop Clock -->
+            <p id="live-clock" class="hidden md:block text-xs opacity-90 font-mono text-right mr-2"></p>
+            
+            <!-- Stats Button -->
+            <button onclick="app.showStats()" class="bg-orange-800 hover:bg-orange-900 text-white w-10 h-10 md:w-auto md:px-4 md:py-2 rounded shadow text-sm font-medium transition flex items-center justify-center gap-2 active:bg-black" title="Today's Stats">
+                <i class="fas fa-chart-pie"></i> <span class="hidden md:inline">Stats</span>
+            </button>
+
+            <!-- Report Button -->
+            <button onclick="app.exportDailyReport()" class="bg-orange-700 hover:bg-orange-800 text-white w-10 h-10 md:w-auto md:px-4 md:py-2 rounded shadow text-sm font-medium transition flex items-center justify-center gap-2 active:bg-orange-900" title="Download Excel">
+                <i class="fas fa-file-excel"></i> <span class="hidden md:inline">End of Day</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex overflow-hidden relative">
+        
+        <!-- Left: Menu Grid -->
+        <div class="w-full md:w-2/3 p-4 md:p-6 overflow-y-auto pb-24 md:pb-6 bg-slate-100 no-print" id="menu-section">
+            
+            <!-- Menu Header with Mobile Stats -->
+            <div class="flex justify-between items-center mb-4 border-b pb-2 border-slate-300">
+                <h2 class="text-lg font-semibold text-slate-600">Menu Items</h2>
+                
+                <!-- Mobile Live Summary Badge -->
+                <div class="md:hidden flex items-center gap-2">
+                    <div class="bg-slate-800 text-white px-3 py-1 rounded-full text-xs font-bold shadow-sm flex gap-2 items-center">
+                        <span id="mobile-stats-orders">0 Orders</span>
+                        <span class="w-px h-3 bg-slate-500"></span>
+                        <span id="mobile-stats-total" class="text-green-300">₹0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="menu-container" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+                <!-- Items injected via JS -->
+            </div>
+        </div>
+
+        <!-- Right: Billing/Cart Section -->
+        <div id="cart-panel" class="fixed inset-0 z-40 bg-white md:static md:z-auto md:w-1/3 flex flex-col h-full transform translate-x-full md:translate-x-0 transition-transform duration-300 shadow-2xl md:shadow-none border-l border-slate-200">
+            
+            <!-- Mobile Header -->
+            <div class="md:hidden bg-slate-100 p-3 flex items-center gap-3 border-b shadow-sm shrink-0 no-print">
+                <button onclick="app.toggleCart(false)" class="w-10 h-10 bg-white rounded-full shadow text-slate-600 active:bg-slate-100 flex items-center justify-center">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <div>
+                    <h2 class="font-bold text-lg text-slate-800">Current Order</h2>
+                    <p class="text-xs text-slate-500">Review and Pay</p>
+                </div>
+            </div>
+
+            <!-- Desktop Header -->
+            <div class="hidden md:flex p-4 bg-slate-800 text-white justify-between items-center shadow shrink-0 no-print">
+                <h2 class="font-semibold text-lg"><i class="fas fa-receipt mr-2"></i>Current Order</h2>
+                <span id="order-id-display" class="text-xs font-mono bg-slate-700 px-2 py-1 rounded text-slate-300">#ID</span>
+            </div>
+
+            <!-- RECEIPT AREA (Printable) -->
+            <div id="receipt-area" class="flex-1 flex flex-col overflow-hidden">
+                <!-- Print-only Header -->
+                <div class="hidden print:block text-center p-4 border-b border-black">
+                    <h1 class="text-2xl font-bold">Annpurna Canteen</h1>
+                    <p class="text-sm">CRISP Campus</p>
+                    <p id="print-date" class="text-xs mt-1 font-mono"></p>
+                    <p id="print-order-id" class="text-sm font-bold mt-1"></p>
+                </div>
+
+                <!-- Cart List -->
+                <div class="flex-1 overflow-y-auto p-4 bill-section relative">
+                    <table class="w-full text-sm text-left">
+                        <thead>
+                            <tr class="border-b-2 border-slate-300 text-slate-500 uppercase text-xs">
+                                <th class="pb-2 pl-1">Item</th>
+                                <th class="pb-2 text-center">Qty</th>
+                                <th class="pb-2 text-right">Price</th>
+                                <th class="pb-2 w-8 no-print"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="cart-items-container">
+                            <!-- JS Injected -->
+                        </tbody>
+                    </table>
+                    
+                    <div id="empty-cart-msg" class="flex flex-col items-center justify-center h-full text-slate-400 mt-10 no-print">
+                        <i class="fas fa-basket-shopping text-4xl mb-2"></i>
+                        <p>No items added yet</p>
+                    </div>
+                </div>
+
+                <div class="px-4 pt-2 pb-0 bg-white">
+                     <div class="flex justify-between items-end mb-2 pt-4 border-t border-slate-300">
+                        <span class="text-slate-500 font-medium">Total Amount</span>
+                        <span class="text-3xl font-bold text-slate-800">₹<span id="total-amount">0</span></span>
+                    </div>
+                </div>
+                
+                <div class="hidden print:block text-center p-4 mt-4 border-t border-black">
+                    <p class="text-sm font-bold">Thank You!</p>
+                    <p class="text-xs">Please visit again.</p>
+                </div>
+            </div>
+
+            <!-- Action Area -->
+            <div class="bg-white p-4 shadow-[0_-5px_15px_rgba(0,0,0,0.05)] shrink-0 z-10 no-print">
+                <div class="mb-3">
+                    <input type="text" id="order-remarks" placeholder="Remarks (e.g. No Onion)" 
+                        class="w-full border border-slate-300 rounded-lg px-3 py-3 text-sm focus:outline-none focus:border-orange-500 transition bg-slate-50">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="app.processPayment('Cash')" class="bg-green-600 active:bg-green-800 hover:bg-green-700 text-white py-3 rounded-lg font-bold text-lg transition shadow flex items-center justify-center gap-2">
+                        <i class="fas fa-money-bill-wave"></i> Cash
+                    </button>
+                    <button onclick="app.initiateOnlinePayment()" class="bg-blue-600 active:bg-blue-800 hover:bg-blue-700 text-white py-3 rounded-lg font-bold text-lg transition shadow flex items-center justify-center gap-2">
+                        <i class="fas fa-qrcode"></i> Online
+                    </button>
+                </div>
+                
+                <div class="flex gap-2 mt-3">
+                    <button onclick="app.clearCart()" class="flex-1 text-slate-400 hover:text-red-500 hover:bg-red-50 border border-transparent hover:border-red-200 rounded py-2 text-xs font-medium transition flex items-center justify-center gap-1">
+                        <i class="fas fa-trash"></i> Discard
+                    </button>
+                    <button onclick="window.print()" class="flex-1 text-slate-500 hover:text-slate-800 hover:bg-slate-100 border border-slate-200 rounded py-2 text-xs font-bold transition flex items-center justify-center gap-1">
+                        <i class="fas fa-print"></i> Print Receipt
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Bottom Sticky Bar -->
+        <div id="mobile-bottom-bar" onclick="app.toggleCart(true)" class="md:hidden fixed bottom-4 left-4 right-4 bg-slate-800 text-white p-4 rounded-xl shadow-2xl flex justify-between items-center z-30 cursor-pointer active:scale-95 transition-transform no-print">
+            <div class="flex flex-col">
+                <span class="text-xs text-slate-400 uppercase font-bold tracking-wider">Total Bill</span>
+                <span class="font-bold text-xl">₹<span id="mobile-bar-total">0</span> <span class="text-sm text-slate-400 font-normal mx-1">•</span> <span id="mobile-bar-count" class="text-sm font-normal text-slate-300">0 items</span></span>
+            </div>
+            <div class="bg-orange-600 px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 shadow-lg">
+                View Bill <i class="fas fa-chevron-right text-xs"></i>
+            </div>
+        </div>
+    </main>
+
+    <!-- NEW: Statistics Modal -->
+    <div id="stats-modal" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-[80] backdrop-blur-sm p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="bg-slate-800 p-4 text-white flex justify-between items-center shrink-0">
+                <div>
+                    <h3 class="font-bold text-lg"><i class="fas fa-chart-bar mr-2"></i>Today's Sales</h3>
+                    <p id="stats-date" class="text-xs text-slate-400 font-mono"></p>
+                </div>
+                <button onclick="document.getElementById('stats-modal').classList.add('hidden'); document.getElementById('stats-modal').classList.remove('flex')" class="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <div class="p-4 overflow-y-auto">
+                <!-- Big Stats -->
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div class="bg-green-50 p-4 rounded-xl border border-green-100 text-center">
+                        <div class="text-xs text-green-600 uppercase font-bold tracking-wider mb-1">Total Revenue</div>
+                        <div class="text-2xl font-bold text-green-700">₹<span id="stats-revenue">0</span></div>
+                    </div>
+                    <div class="bg-blue-50 p-4 rounded-xl border border-blue-100 text-center">
+                        <div class="text-xs text-blue-600 uppercase font-bold tracking-wider mb-1">Total Orders</div>
+                        <div class="text-2xl font-bold text-blue-700"><span id="stats-orders">0</span></div>
+                    </div>
+                </div>
+
+                <!-- Payment Methods -->
+                <div class="mb-6">
+                    <h4 class="text-xs font-bold text-slate-500 uppercase mb-2">Payment Mode</h4>
+                    <div class="flex gap-2 text-sm">
+                        <div class="flex-1 bg-slate-100 p-2 rounded flex justify-between items-center">
+                            <span><i class="fas fa-money-bill-wave text-green-600 mr-2"></i>Cash</span>
+                            <span class="font-bold">₹<span id="stats-cash">0</span></span>
+                        </div>
+                        <div class="flex-1 bg-slate-100 p-2 rounded flex justify-between items-center">
+                            <span><i class="fas fa-qrcode text-blue-600 mr-2"></i>Online</span>
+                            <span class="font-bold">₹<span id="stats-online">0</span></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Item Breakdown -->
+                <div>
+                    <h4 class="text-xs font-bold text-slate-500 uppercase mb-2">Item Sales Breakdown</h4>
+                    <div class="border rounded-lg overflow-hidden">
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-slate-100 text-slate-600 text-xs uppercase">
+                                <tr>
+                                    <th class="px-3 py-2">Item</th>
+                                    <th class="px-3 py-2 text-right">Qty</th>
+                                    <th class="px-3 py-2 text-right">Val</th>
+                                </tr>
+                            </thead>
+                            <tbody id="stats-item-list" class="divide-y divide-slate-100">
+                                <!-- JS Injected -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR Payment Modal -->
+    <div id="qr-modal" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-[70] backdrop-blur-sm p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xs overflow-hidden text-center">
+            <div class="bg-blue-600 p-4 text-white">
+                <h3 class="font-bold text-lg">Scan to Pay</h3>
+                <p class="text-blue-100 text-xs">Total: ₹<span id="qr-total-amount">0</span></p>
+            </div>
+            <div class="p-6 flex flex-col items-center">
+                <div class="bg-white p-2 border-2 border-dashed border-slate-300 rounded-lg mb-4">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=upi://pay?pa=example@upi&pn=AnnpurnaCanteen" 
+                         alt="Payment QR Code" 
+                         class="w-48 h-48 object-contain">
+                </div>
+                <p class="text-sm text-slate-500 mb-6">Ask customer to scan this QR code.<br>Click confirm once payment is received.</p>
+                
+                <button onclick="app.confirmOnlinePayment()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg mb-3">
+                    Payment Received <i class="fas fa-check ml-1"></i>
+                </button>
+                <button onclick="document.getElementById('qr-modal').classList.add('hidden'); document.getElementById('qr-modal').classList.remove('flex');" class="text-slate-400 text-sm hover:text-slate-600">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quantity Modal -->
+    <div id="qty-modal" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-50 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xs overflow-hidden">
+            <div class="bg-slate-800 p-4 text-white flex justify-between items-center">
+                <h3 class="font-bold text-lg" id="qty-item-name">Set Quantity</h3>
+                <button onclick="app.closeModal()" class="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-5">
+                <div class="flex items-center justify-between mb-6 bg-slate-100 rounded-xl p-2">
+                    <button onclick="app.adjustQty(-1)" class="w-12 h-12 rounded-lg bg-white text-slate-800 shadow text-xl active:bg-slate-200 font-bold">-</button>
+                    <span id="qty-display" class="text-4xl font-bold text-orange-600">1</span>
+                    <button onclick="app.adjustQty(1)" class="w-12 h-12 rounded-lg bg-orange-600 text-white shadow text-xl active:bg-orange-800 font-bold">+</button>
+                </div>
+                <div class="grid grid-cols-3 gap-3 mb-5">
+                    <button onclick="app.setQty(1)" class="p-3 bg-slate-50 active:bg-slate-200 rounded-lg border border-slate-200 text-base font-bold text-slate-700">1</button>
+                    <button onclick="app.setQty(2)" class="p-3 bg-slate-50 active:bg-slate-200 rounded-lg border border-slate-200 text-base font-bold text-slate-700">2</button>
+                    <button onclick="app.setQty(3)" class="p-3 bg-slate-50 active:bg-slate-200 rounded-lg border border-slate-200 text-base font-bold text-slate-700">3</button>
+                    <button onclick="app.setQty(5)" class="p-3 bg-slate-50 active:bg-slate-200 rounded-lg border border-slate-200 text-base font-bold text-slate-700">5</button>
+                    <button onclick="app.setQty(10)" class="p-3 bg-slate-50 active:bg-slate-200 rounded-lg border border-slate-200 text-base font-bold text-slate-700">10</button>
+                    <button onclick="app.setQty(20)" class="p-3 bg-slate-50 active:bg-slate-200 rounded-lg border border-slate-200 text-base font-bold text-slate-700">20</button>
+                </div>
+                <button onclick="app.confirmAddItem()" class="w-full bg-slate-800 active:bg-black text-white font-bold py-4 rounded-xl shadow-lg text-lg flex justify-center items-center gap-2">
+                    Add to Bill <i class="fas fa-check"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="fixed top-5 left-1/2 -translate-x-1/2 bg-slate-900/95 backdrop-blur text-white px-6 py-3 rounded-full shadow-2xl transform -translate-y-20 opacity-0 transition-all duration-300 z-[90] flex items-center gap-3 min-w-[200px] justify-center border border-slate-700 no-print">
+        <i id="toast-icon" class="fas fa-check-circle text-green-400 text-xl"></i>
+        <span id="toast-msg" class="font-medium">Notification</span>
+    </div>
+
+    <script>
+        class CanteenApp {
+            constructor() {
+                this.cart = [];
+                this.transactions = JSON.parse(localStorage.getItem('crisp_transactions')) || [];
+                this.currentSelection = null; 
+                this.tempQty = 1;
+                
+                this.menuItems = [
+                    { id: 1, name: "Samosa", price: 15, image: "https://placehold.co/400x300/fa923f/ffffff?text=Samosa" },
+                    { id: 2, name: "Kachori", price: 15, image: "https://placehold.co/400x300/f59e0b/ffffff?text=Kachori" },
+                    { id: 3, name: "Poha", price: 25, image: "https://placehold.co/400x300/fcd34d/333333?text=Poha" },
+                    { id: 4, name: "Tea (Chai)", price: 10, image: "https://placehold.co/400x300/78350f/ffffff?text=Tea" },
+                    { id: 5, name: "Veg Thali", price: 120, image: "https://placehold.co/400x300/166534/ffffff?text=Veg+Thali" },
+                    { id: 6, name: "Special Thali", price: 200, image: "https://placehold.co/400x300/991b1b/ffffff?text=Special+Thali" },
+                    { id: 7, name: "Lassi", price: 40, image: "https://placehold.co/400x300/ffffff/333333?text=Lassi" },
+                    { id: 8, name: "Sandwich", price: 50, image: "https://placehold.co/400x300/a3e635/333333?text=Sandwich" },
+                    { id: 9, name: "Coffee", price: 20, image: "https://placehold.co/400x300/4a3428/ffffff?text=Coffee" },
+                    { id: 10, name: "Bread Pakora", price: 20, image: "https://placehold.co/400x300/eab308/333333?text=Bread+Pakora" }
+                ];
+
+                this.init();
+            }
+
+            init() {
+                this.renderMenu();
+                this.updateOrderId();
+                this.startClock();
+                this.updateCartDisplay();
+                this.updateMobileSummary(); // Initial update
+            }
+
+            startClock() {
+                const update = () => {
+                    const now = new Date();
+                    const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+                    const fullStr = now.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' }) + ' ' + timeStr;
+                    document.getElementById('live-clock').innerText = fullStr;
+                    document.getElementById('print-date').innerText = fullStr;
+                };
+                setInterval(update, 1000);
+                update();
+            }
+
+            updateOrderId() {
+                const id = "ORD-" + (this.transactions.length + 1).toString().padStart(4, '0');
+                document.getElementById('order-id-display').innerText = id;
+                document.getElementById('print-order-id').innerText = "Order: " + id;
+            }
+
+            renderMenu() {
+                const container = document.getElementById('menu-container');
+                container.innerHTML = this.menuItems.map(item => `
+                    <div onclick="app.openModal(${item.id})" class="menu-card bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden cursor-pointer active:shadow-inner flex flex-col h-full relative">
+                        <div class="h-28 md:h-32 overflow-hidden relative bg-slate-100">
+                            <img src="${item.image}" loading="lazy" alt="${item.name}" class="w-full h-full object-cover" onerror="this.src='https://placehold.co/400x300?text=No+Image'">
+                            <div class="absolute bottom-0 right-0 bg-orange-600 text-white px-2 py-1 rounded-tl-lg text-xs font-bold shadow">
+                                ₹${item.price}
+                            </div>
+                        </div>
+                        <div class="p-3 flex-1 flex flex-col justify-center">
+                            <h3 class="font-bold text-slate-700 text-sm md:text-base leading-tight line-clamp-2">${item.name}</h3>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            /* --- Stats & Dashboard Logic --- */
+
+            getTodayStats() {
+                const todayStr = new Date().toLocaleDateString('en-IN');
+                const todayData = this.transactions.filter(t => t.date === todayStr);
+                
+                const stats = {
+                    revenue: 0,
+                    orders: todayData.length,
+                    cash: 0,
+                    online: 0,
+                    items: {} 
+                };
+
+                todayData.forEach(t => {
+                    stats.revenue += t.total;
+                    if(t.method === 'Cash') stats.cash += t.total;
+                    else stats.online += t.total;
+
+                    // Parse items string: "Samosa (x2); Tea (x1)"
+                    const itemParts = t.items.split('; ');
+                    itemParts.forEach(part => {
+                        const match = part.match(/(.+) \(x(\d+)\)/);
+                        if (match) {
+                            const name = match[1];
+                            const qty = parseInt(match[2]);
+                            if (!stats.items[name]) stats.items[name] = 0;
+                            stats.items[name] += qty;
+                        }
+                    });
+                });
+
+                return stats;
+            }
+
+            updateMobileSummary() {
+                const stats = this.getTodayStats();
+                document.getElementById('mobile-stats-orders').innerText = `${stats.orders} Orders`;
+                document.getElementById('mobile-stats-total').innerText = `₹${stats.revenue}`;
+            }
+
+            showStats() {
+                const stats = this.getTodayStats();
+                const todayStr = new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+                document.getElementById('stats-date').innerText = todayStr;
+                document.getElementById('stats-revenue').innerText = stats.revenue;
+                document.getElementById('stats-orders').innerText = stats.orders;
+                document.getElementById('stats-cash').innerText = stats.cash;
+                document.getElementById('stats-online').innerText = stats.online;
+
+                // Sort items by quantity sold
+                const sortedItems = Object.entries(stats.items).sort((a, b) => b[1] - a[1]);
+                
+                const listContainer = document.getElementById('stats-item-list');
+                if(sortedItems.length === 0) {
+                    listContainer.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-slate-400">No sales yet today</td></tr>';
+                } else {
+                    listContainer.innerHTML = sortedItems.map(([name, qty]) => {
+                        // Find price to calculate approx value
+                        const menuItem = this.menuItems.find(m => m.name === name);
+                        const val = menuItem ? menuItem.price * qty : 0;
+                        return `
+                        <tr>
+                            <td class="px-3 py-2 font-medium text-slate-700">${name}</td>
+                            <td class="px-3 py-2 text-right text-slate-600">${qty}</td>
+                            <td class="px-3 py-2 text-right text-slate-600">₹${val}</td>
+                        </tr>
+                        `;
+                    }).join('');
+                }
+
+                const modal = document.getElementById('stats-modal');
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+
+            /* --- Cart Logic --- */
+
+            toggleCart(show) {
+                const panel = document.getElementById('cart-panel');
+                if (show) {
+                    panel.classList.remove('translate-x-full');
+                } else {
+                    panel.classList.add('translate-x-full');
+                }
+            }
+
+            openModal(itemId) {
+                this.currentSelection = this.menuItems.find(i => i.id === itemId);
+                if (!this.currentSelection) return;
+                this.tempQty = 1;
+                document.getElementById('qty-item-name').innerText = this.currentSelection.name;
+                document.getElementById('qty-display').innerText = this.tempQty;
+                const modal = document.getElementById('qty-modal');
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+
+            closeModal() {
+                const modal = document.getElementById('qty-modal');
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                this.currentSelection = null;
+            }
+
+            adjustQty(amount) {
+                this.tempQty += amount;
+                if (this.tempQty < 1) this.tempQty = 1;
+                document.getElementById('qty-display').innerText = this.tempQty;
+            }
+
+            setQty(val) {
+                this.tempQty = val;
+                document.getElementById('qty-display').innerText = this.tempQty;
+            }
+
+            confirmAddItem() {
+                if (!this.currentSelection) return;
+                const existingItemIndex = this.cart.findIndex(i => i.id === this.currentSelection.id);
+                if (existingItemIndex > -1) {
+                    this.cart[existingItemIndex].quantity += this.tempQty;
+                } else {
+                    this.cart.push({
+                        id: this.currentSelection.id,
+                        name: this.currentSelection.name,
+                        price: this.currentSelection.price,
+                        quantity: this.tempQty
+                    });
+                }
+                this.closeModal();
+                this.updateCartDisplay();
+                this.showToast(`${this.tempQty} ${this.currentSelection.name} Added`);
+            }
+
+            changeCartQty(index, change) {
+                if (this.cart[index].quantity + change <= 0) {
+                    this.removeFromCart(index);
+                } else {
+                    this.cart[index].quantity += change;
+                    this.updateCartDisplay();
+                }
+            }
+
+            removeFromCart(index) {
+                if(confirm("Remove this item?")) {
+                    this.cart.splice(index, 1);
+                    this.updateCartDisplay();
+                }
+            }
+
+            clearCart() {
+                if(this.cart.length === 0) return;
+                if(confirm("Clear current order?")) {
+                    this.cart = [];
+                    document.getElementById('order-remarks').value = "";
+                    this.updateCartDisplay();
+                }
+            }
+
+            updateCartDisplay() {
+                const container = document.getElementById('cart-items-container');
+                const emptyMsg = document.getElementById('empty-cart-msg');
+                const totalEl = document.getElementById('total-amount');
+                const mobileBar = document.getElementById('mobile-bottom-bar');
+                const mobileBarTotal = document.getElementById('mobile-bar-total');
+                const mobileBarCount = document.getElementById('mobile-bar-count');
+
+                if (this.cart.length === 0) {
+                    container.innerHTML = '';
+                    emptyMsg.style.display = 'flex';
+                    totalEl.innerText = '0';
+                    if(mobileBar) mobileBar.style.display = 'none';
+                    return;
+                }
+
+                emptyMsg.style.display = 'none';
+                if(mobileBar) mobileBar.style.display = 'flex';
+
+                let grandTotal = 0;
+                let totalItems = 0;
+
+                container.innerHTML = this.cart.map((item, index) => {
+                    const itemTotal = item.price * item.quantity;
+                    grandTotal += itemTotal;
+                    totalItems += item.quantity;
+                    return `
+                        <tr class="border-b border-dashed border-slate-200 last:border-0 group">
+                            <td class="py-3 pl-1 font-medium text-slate-700">
+                                <div class="line-clamp-1">${item.name}</div>
+                                <div class="text-xs text-slate-400 font-light">@ ₹${item.price}</div>
+                            </td>
+                            <td class="py-3 text-center">
+                                <div class="flex items-center justify-center gap-1 no-print">
+                                    <button onclick="app.changeCartQty(${index}, -1)" class="w-6 h-6 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-bold">-</button>
+                                    <span class="w-6 text-center text-sm font-bold text-slate-700">${item.quantity}</span>
+                                    <button onclick="app.changeCartQty(${index}, 1)" class="w-6 h-6 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-bold">+</button>
+                                </div>
+                                <div class="hidden print:block text-sm font-bold">x${item.quantity}</div>
+                            </td>
+                            <td class="py-3 text-right font-mono text-slate-700 text-sm">₹${itemTotal}</td>
+                            <td class="py-3 text-right pr-1 no-print">
+                                <button onclick="app.removeFromCart(${index})" class="w-8 h-8 rounded-full active:bg-red-50 text-slate-300 hover:text-red-500 transition">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+
+                totalEl.innerText = grandTotal;
+                if(mobileBarTotal) mobileBarTotal.innerText = grandTotal;
+                if(mobileBarCount) mobileBarCount.innerText = totalItems + " items";
+            }
+
+            /* --- Payment --- */
+
+            initiateOnlinePayment() {
+                if (this.cart.length === 0) {
+                    this.showToast("Cart is empty!", "error");
+                    return;
+                }
+                const totalAmount = this.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+                document.getElementById('qr-total-amount').innerText = totalAmount;
+                const qrModal = document.getElementById('qr-modal');
+                qrModal.classList.remove('hidden');
+                qrModal.classList.add('flex');
+            }
+
+            confirmOnlinePayment() {
+                const qrModal = document.getElementById('qr-modal');
+                qrModal.classList.add('hidden');
+                qrModal.classList.remove('flex');
+                this.saveTransaction('Online');
+            }
+
+            processPayment(method) {
+                if (method === 'Online') {
+                    this.initiateOnlinePayment();
+                    return;
+                }
+                if (this.cart.length === 0) {
+                    this.showToast("Cart is empty!", "error");
+                    return;
+                }
+                if(confirm("Confirm Cash Payment?")) {
+                    this.saveTransaction('Cash');
+                }
+            }
+
+            saveTransaction(method) {
+                const totalAmount = this.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+                const remarks = document.getElementById('order-remarks').value;
+                const orderId = document.getElementById('order-id-display').innerText;
+                const now = new Date();
+
+                const transaction = {
+                    orderId: orderId,
+                    date: now.toLocaleDateString('en-IN'),
+                    time: now.toLocaleTimeString('en-IN'),
+                    method: method,
+                    total: totalAmount,
+                    remarks: remarks.replace(/,/g, ' '), 
+                    items: this.cart.map(i => `${i.name} (x${i.quantity})`).join('; ')
+                };
+
+                this.transactions.push(transaction);
+                localStorage.setItem('crisp_transactions', JSON.stringify(this.transactions));
+
+                this.showToast(`Order Placed: ₹${totalAmount} (${method})`, "success");
+
+                this.cart = [];
+                document.getElementById('order-remarks').value = "";
+                this.updateCartDisplay();
+                this.updateOrderId();
+                this.updateMobileSummary(); // Update stats immediately
+                this.toggleCart(false);
+            }
+
+            exportDailyReport() {
+                const todayStr = new Date().toLocaleDateString('en-IN');
+                const dailyData = this.transactions.filter(t => t.date === todayStr);
+
+                if (dailyData.length === 0) {
+                    this.showToast("No sales today", "error");
+                    return;
+                }
+
+                let csvContent = "data:text/csv;charset=utf-8,";
+                csvContent += "Order ID,Time,Items,Method,Total Amount,Remarks\n";
+
+                dailyData.forEach(row => {
+                    const rowStr = `${row.orderId},${row.time},"${row.items}",${row.method},${row.total},"${row.remarks}"`;
+                    csvContent += rowStr + "\n";
+                });
+
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                const fileName = `Sales_${todayStr.replace(/\//g, '-')}.csv`;
+                link.setAttribute("download", fileName);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+
+            showToast(msg, type = "success") {
+                const toast = document.getElementById('toast');
+                const icon = document.getElementById('toast-icon');
+                const msgEl = document.getElementById('toast-msg');
+
+                msgEl.innerText = msg;
+                if(type === 'error') {
+                    icon.className = "fas fa-exclamation-circle text-red-400 text-xl";
+                    toast.classList.add("border-red-500");
+                } else {
+                    icon.className = "fas fa-check-circle text-green-400 text-xl";
+                    toast.classList.remove("border-red-500");
+                }
+
+                toast.classList.remove('-translate-y-20', 'opacity-0');
+                setTimeout(() => {
+                    toast.classList.add('-translate-y-20', 'opacity-0');
+                }, 3000);
+            }
+        }
+
+        const app = new CanteenApp();
+    </script>
+</body>
+</html>
