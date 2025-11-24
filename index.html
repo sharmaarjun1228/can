@@ -82,14 +82,19 @@
             <!-- Desktop Clock -->
             <p id="live-clock" class="hidden md:block text-xs opacity-90 font-mono text-right mr-2"></p>
             
+            <!-- Refresh Button (New) -->
+            <button onclick="window.location.reload()" class="bg-orange-500 hover:bg-orange-700 text-white w-10 h-10 rounded shadow text-sm font-medium transition flex items-center justify-center active:bg-orange-800" title="Refresh App">
+                <i class="fas fa-sync-alt"></i>
+            </button>
+
             <!-- Stats Button -->
-            <button onclick="app.showStats()" class="bg-orange-800 hover:bg-orange-900 text-white w-10 h-10 md:w-auto md:px-4 md:py-2 rounded shadow text-sm font-medium transition flex items-center justify-center gap-2 active:bg-black" title="Today's Stats">
-                <i class="fas fa-chart-pie"></i> <span class="hidden md:inline">Stats</span>
+            <button onclick="app.showStats()" class="bg-orange-800 hover:bg-orange-900 text-white w-10 h-10 md:w-auto md:px-4 md:py-2 rounded shadow text-sm font-medium transition flex items-center justify-center gap-2 active:bg-black" title="Sales History & Stats">
+                <i class="fas fa-chart-line"></i> <span class="hidden md:inline">History</span>
             </button>
 
             <!-- Report Button -->
-            <button onclick="app.exportDailyReport()" class="bg-orange-700 hover:bg-orange-800 text-white w-10 h-10 md:w-auto md:px-4 md:py-2 rounded shadow text-sm font-medium transition flex items-center justify-center gap-2 active:bg-orange-900" title="Download Excel">
-                <i class="fas fa-file-excel"></i> <span class="hidden md:inline">End of Day</span>
+            <button onclick="app.exportDailyReport()" class="bg-orange-700 hover:bg-orange-800 text-white w-10 h-10 md:w-auto md:px-4 md:py-2 rounded shadow text-sm font-medium transition flex items-center justify-center gap-2 active:bg-orange-900" title="Download Today's Report">
+                <i class="fas fa-download"></i> <span class="hidden md:inline">Today</span>
             </button>
         </div>
     </header>
@@ -223,55 +228,64 @@
         </div>
     </main>
 
-    <!-- NEW: Statistics Modal -->
+    <!-- NEW: Statistics & History Modal -->
     <div id="stats-modal" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-[80] backdrop-blur-sm p-4">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
-            <div class="bg-slate-800 p-4 text-white flex justify-between items-center shrink-0">
-                <div>
-                    <h3 class="font-bold text-lg"><i class="fas fa-chart-bar mr-2"></i>Today's Sales</h3>
-                    <p id="stats-date" class="text-xs text-slate-400 font-mono"></p>
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+            
+            <!-- Header with Date Picker -->
+            <div class="bg-slate-800 p-4 pb-6 text-white shrink-0">
+                <div class="flex justify-between items-start mb-4">
+                    <h3 class="font-bold text-lg flex items-center gap-2"><i class="fas fa-history"></i> Sales Dashboard</h3>
+                    <button onclick="document.getElementById('stats-modal').classList.add('hidden'); document.getElementById('stats-modal').classList.remove('flex')" class="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition"><i class="fas fa-times"></i></button>
                 </div>
-                <button onclick="document.getElementById('stats-modal').classList.add('hidden'); document.getElementById('stats-modal').classList.remove('flex')" class="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition"><i class="fas fa-times"></i></button>
+                
+                <!-- Date Filter -->
+                <div class="flex items-center gap-2">
+                    <label class="text-xs uppercase font-bold text-slate-400">View Date:</label>
+                    <input type="date" id="stats-date-picker" onchange="app.renderStatsForDate(this.value)" 
+                        class="bg-slate-700 text-white border border-slate-600 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-orange-500 w-full">
+                </div>
             </div>
             
-            <div class="p-4 overflow-y-auto">
+            <div class="p-4 overflow-y-auto bg-slate-50 flex-1">
+                
                 <!-- Big Stats -->
-                <div class="grid grid-cols-2 gap-4 mb-6">
-                    <div class="bg-green-50 p-4 rounded-xl border border-green-100 text-center">
-                        <div class="text-xs text-green-600 uppercase font-bold tracking-wider mb-1">Total Revenue</div>
-                        <div class="text-2xl font-bold text-green-700">₹<span id="stats-revenue">0</span></div>
+                <div class="grid grid-cols-2 gap-4 mb-6 -mt-2">
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 text-center">
+                        <div class="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">Total Revenue</div>
+                        <div class="text-2xl font-bold text-green-600">₹<span id="stats-revenue">0</span></div>
                     </div>
-                    <div class="bg-blue-50 p-4 rounded-xl border border-blue-100 text-center">
-                        <div class="text-xs text-blue-600 uppercase font-bold tracking-wider mb-1">Total Orders</div>
-                        <div class="text-2xl font-bold text-blue-700"><span id="stats-orders">0</span></div>
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 text-center">
+                        <div class="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">Total Orders</div>
+                        <div class="text-2xl font-bold text-blue-600"><span id="stats-orders">0</span></div>
                     </div>
                 </div>
 
                 <!-- Payment Methods -->
-                <div class="mb-6">
-                    <h4 class="text-xs font-bold text-slate-500 uppercase mb-2">Payment Mode</h4>
+                <div class="mb-6 bg-white p-3 rounded-lg border border-slate-200">
+                    <h4 class="text-xs font-bold text-slate-400 uppercase mb-2">Payment Breakdown</h4>
                     <div class="flex gap-2 text-sm">
-                        <div class="flex-1 bg-slate-100 p-2 rounded flex justify-between items-center">
-                            <span><i class="fas fa-money-bill-wave text-green-600 mr-2"></i>Cash</span>
+                        <div class="flex-1 bg-green-50 text-green-800 p-2 rounded flex justify-between items-center">
+                            <span><i class="fas fa-money-bill-wave mr-2"></i>Cash</span>
                             <span class="font-bold">₹<span id="stats-cash">0</span></span>
                         </div>
-                        <div class="flex-1 bg-slate-100 p-2 rounded flex justify-between items-center">
-                            <span><i class="fas fa-qrcode text-blue-600 mr-2"></i>Online</span>
+                        <div class="flex-1 bg-blue-50 text-blue-800 p-2 rounded flex justify-between items-center">
+                            <span><i class="fas fa-qrcode mr-2"></i>Online</span>
                             <span class="font-bold">₹<span id="stats-online">0</span></span>
                         </div>
                     </div>
                 </div>
 
                 <!-- Item Breakdown -->
-                <div>
-                    <h4 class="text-xs font-bold text-slate-500 uppercase mb-2">Item Sales Breakdown</h4>
-                    <div class="border rounded-lg overflow-hidden">
+                <div class="mb-6">
+                    <h4 class="text-xs font-bold text-slate-500 uppercase mb-2">Product Sales</h4>
+                    <div class="border rounded-lg overflow-hidden bg-white shadow-sm">
                         <table class="w-full text-sm text-left">
                             <thead class="bg-slate-100 text-slate-600 text-xs uppercase">
                                 <tr>
                                     <th class="px-3 py-2">Item</th>
                                     <th class="px-3 py-2 text-right">Qty</th>
-                                    <th class="px-3 py-2 text-right">Val</th>
+                                    <th class="px-3 py-2 text-right">Total</th>
                                 </tr>
                             </thead>
                             <tbody id="stats-item-list" class="divide-y divide-slate-100">
@@ -280,6 +294,16 @@
                         </table>
                     </div>
                 </div>
+            </div>
+
+            <!-- Footer Actions -->
+            <div class="p-4 bg-white border-t border-slate-200 shrink-0 space-y-2">
+                <button onclick="app.exportFullHistory()" class="w-full bg-slate-800 hover:bg-slate-900 text-white py-3 rounded-lg text-sm font-bold flex items-center justify-center gap-2">
+                    <i class="fas fa-table"></i> Download Full History (All Time)
+                </button>
+                <button onclick="app.backupData()" class="w-full border border-slate-300 hover:bg-slate-50 text-slate-600 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-2">
+                    <i class="fas fa-save"></i> Backup Data (JSON)
+                </button>
             </div>
         </div>
     </div>
@@ -347,6 +371,7 @@
         class CanteenApp {
             constructor() {
                 this.cart = [];
+                // Load transactions from storage
                 this.transactions = JSON.parse(localStorage.getItem('crisp_transactions')) || [];
                 this.currentSelection = null; 
                 this.tempQty = 1;
@@ -372,7 +397,7 @@
                 this.updateOrderId();
                 this.startClock();
                 this.updateCartDisplay();
-                this.updateMobileSummary(); // Initial update
+                this.updateMobileSummary(); 
             }
 
             startClock() {
@@ -412,24 +437,27 @@
 
             /* --- Stats & Dashboard Logic --- */
 
-            getTodayStats() {
-                const todayStr = new Date().toLocaleDateString('en-IN');
-                const todayData = this.transactions.filter(t => t.date === todayStr);
+            // Helper to get stats for a specific date (formatted as DD/MM/YYYY in data, but input gives YYYY-MM-DD)
+            getStatsForDate(dateInput) {
+                // Convert YYYY-MM-DD (Input) to DD/MM/YYYY (Storage format)
+                const [year, month, day] = dateInput.split('-');
+                const targetDateStr = `${day}/${month}/${year}`;
+                
+                const filteredData = this.transactions.filter(t => t.date === targetDateStr);
                 
                 const stats = {
                     revenue: 0,
-                    orders: todayData.length,
+                    orders: filteredData.length,
                     cash: 0,
                     online: 0,
                     items: {} 
                 };
 
-                todayData.forEach(t => {
+                filteredData.forEach(t => {
                     stats.revenue += t.total;
                     if(t.method === 'Cash') stats.cash += t.total;
                     else stats.online += t.total;
 
-                    // Parse items string: "Samosa (x2); Tea (x1)"
                     const itemParts = t.items.split('; ');
                     itemParts.forEach(part => {
                         const match = part.match(/(.+) \(x(\d+)\)/);
@@ -445,49 +473,126 @@
                 return stats;
             }
 
-            updateMobileSummary() {
-                const stats = this.getTodayStats();
-                document.getElementById('mobile-stats-orders').innerText = `${stats.orders} Orders`;
-                document.getElementById('mobile-stats-total').innerText = `₹${stats.revenue}`;
-            }
-
+            // Called when opening stats modal
             showStats() {
-                const stats = this.getTodayStats();
-                const todayStr = new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                // Default to Today
+                const today = new Date();
+                const yyyy = today.getFullYear();
+                const mm = String(today.getMonth() + 1).padStart(2, '0');
+                const dd = String(today.getDate()).padStart(2, '0');
+                const todayInputValue = `${yyyy}-${mm}-${dd}`;
 
-                document.getElementById('stats-date').innerText = todayStr;
-                document.getElementById('stats-revenue').innerText = stats.revenue;
-                document.getElementById('stats-orders').innerText = stats.orders;
-                document.getElementById('stats-cash').innerText = stats.cash;
-                document.getElementById('stats-online').innerText = stats.online;
-
-                // Sort items by quantity sold
-                const sortedItems = Object.entries(stats.items).sort((a, b) => b[1] - a[1]);
+                const picker = document.getElementById('stats-date-picker');
+                picker.value = todayInputValue;
                 
-                const listContainer = document.getElementById('stats-item-list');
-                if(sortedItems.length === 0) {
-                    listContainer.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-slate-400">No sales yet today</td></tr>';
-                } else {
-                    listContainer.innerHTML = sortedItems.map(([name, qty]) => {
-                        // Find price to calculate approx value
-                        const menuItem = this.menuItems.find(m => m.name === name);
-                        const val = menuItem ? menuItem.price * qty : 0;
-                        return `
-                        <tr>
-                            <td class="px-3 py-2 font-medium text-slate-700">${name}</td>
-                            <td class="px-3 py-2 text-right text-slate-600">${qty}</td>
-                            <td class="px-3 py-2 text-right text-slate-600">₹${val}</td>
-                        </tr>
-                        `;
-                    }).join('');
-                }
+                this.renderStatsForDate(todayInputValue);
 
                 const modal = document.getElementById('stats-modal');
                 modal.classList.remove('hidden');
                 modal.classList.add('flex');
             }
 
-            /* --- Cart Logic --- */
+            // Called when Date Picker changes
+            renderStatsForDate(dateVal) {
+                if(!dateVal) return;
+                
+                const stats = this.getStatsForDate(dateVal);
+
+                document.getElementById('stats-revenue').innerText = stats.revenue;
+                document.getElementById('stats-orders').innerText = stats.orders;
+                document.getElementById('stats-cash').innerText = stats.cash;
+                document.getElementById('stats-online').innerText = stats.online;
+
+                const sortedItems = Object.entries(stats.items).sort((a, b) => b[1] - a[1]);
+                
+                const listContainer = document.getElementById('stats-item-list');
+                if(sortedItems.length === 0) {
+                    listContainer.innerHTML = '<tr><td colspan="3" class="p-8 text-center text-slate-400 italic">No sales found for this date.</td></tr>';
+                } else {
+                    listContainer.innerHTML = sortedItems.map(([name, qty]) => {
+                        const menuItem = this.menuItems.find(m => m.name === name);
+                        const val = menuItem ? menuItem.price * qty : 0;
+                        return `
+                        <tr>
+                            <td class="px-3 py-2 font-medium text-slate-700">${name}</td>
+                            <td class="px-3 py-2 text-right text-slate-600">${qty}</td>
+                            <td class="px-3 py-2 text-right text-slate-800 font-mono">₹${val}</td>
+                        </tr>
+                        `;
+                    }).join('');
+                }
+            }
+
+            updateMobileSummary() {
+                // Always shows TODAY's stats on the home screen
+                const today = new Date();
+                const yyyy = today.getFullYear();
+                const mm = String(today.getMonth() + 1).padStart(2, '0');
+                const dd = String(today.getDate()).padStart(2, '0');
+                const stats = this.getStatsForDate(`${yyyy}-${mm}-${dd}`);
+                
+                document.getElementById('mobile-stats-orders').innerText = `${stats.orders} Orders`;
+                document.getElementById('mobile-stats-total').innerText = `₹${stats.revenue}`;
+            }
+
+            /* --- Data Management --- */
+
+            // Export ONLY Today (CSV)
+            exportDailyReport() {
+                const todayStr = new Date().toLocaleDateString('en-IN'); // Format DD/MM/YYYY
+                const dailyData = this.transactions.filter(t => t.date === todayStr);
+
+                if (dailyData.length === 0) {
+                    this.showToast("No sales today", "error");
+                    return;
+                }
+                this.downloadCSV(dailyData, `Sales_Report_${todayStr.replace(/\//g, '-')}.csv`);
+            }
+
+            // Export ALL History (CSV)
+            exportFullHistory() {
+                if (this.transactions.length === 0) {
+                    this.showToast("No history found", "error");
+                    return;
+                }
+                const todayStr = new Date().toLocaleDateString('en-IN').replace(/\//g, '-');
+                this.downloadCSV(this.transactions, `FULL_HISTORY_${todayStr}.csv`);
+            }
+
+            downloadCSV(data, filename) {
+                let csvContent = "data:text/csv;charset=utf-8,";
+                csvContent += "Order ID,Date,Time,Items,Method,Total Amount,Remarks\n";
+
+                data.forEach(row => {
+                    // Sanitize fields to prevent CSV breakage
+                    const itemsSafe = row.items.replace(/"/g, '""'); 
+                    const remarksSafe = row.remarks ? row.remarks.replace(/"/g, '""') : "";
+                    
+                    const rowStr = `${row.orderId},${row.date},${row.time},"${itemsSafe}",${row.method},${row.total},"${remarksSafe}"`;
+                    csvContent += rowStr + "\n";
+                });
+
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", filename);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+
+            // Developer Tool: Backup Data to JSON
+            backupData() {
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.transactions));
+                const downloadAnchorNode = document.createElement('a');
+                downloadAnchorNode.setAttribute("href", dataStr);
+                downloadAnchorNode.setAttribute("download", "canteen_backup_" + new Date().toISOString().slice(0,10) + ".json");
+                document.body.appendChild(downloadAnchorNode);
+                downloadAnchorNode.click();
+                downloadAnchorNode.remove();
+            }
+
+            /* --- Cart Logic (Same as before) --- */
 
             toggleCart(show) {
                 const panel = document.getElementById('cart-panel');
@@ -668,7 +773,7 @@
 
                 const transaction = {
                     orderId: orderId,
-                    date: now.toLocaleDateString('en-IN'),
+                    date: now.toLocaleDateString('en-IN'), // Stored as DD/MM/YYYY
                     time: now.toLocaleTimeString('en-IN'),
                     method: method,
                     total: totalAmount,
@@ -685,35 +790,8 @@
                 document.getElementById('order-remarks').value = "";
                 this.updateCartDisplay();
                 this.updateOrderId();
-                this.updateMobileSummary(); // Update stats immediately
+                this.updateMobileSummary();
                 this.toggleCart(false);
-            }
-
-            exportDailyReport() {
-                const todayStr = new Date().toLocaleDateString('en-IN');
-                const dailyData = this.transactions.filter(t => t.date === todayStr);
-
-                if (dailyData.length === 0) {
-                    this.showToast("No sales today", "error");
-                    return;
-                }
-
-                let csvContent = "data:text/csv;charset=utf-8,";
-                csvContent += "Order ID,Time,Items,Method,Total Amount,Remarks\n";
-
-                dailyData.forEach(row => {
-                    const rowStr = `${row.orderId},${row.time},"${row.items}",${row.method},${row.total},"${row.remarks}"`;
-                    csvContent += rowStr + "\n";
-                });
-
-                const encodedUri = encodeURI(csvContent);
-                const link = document.createElement("a");
-                link.setAttribute("href", encodedUri);
-                const fileName = `Sales_${todayStr.replace(/\//g, '-')}.csv`;
-                link.setAttribute("download", fileName);
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
             }
 
             showToast(msg, type = "success") {
